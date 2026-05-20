@@ -1,0 +1,94 @@
+{
+  "categories": [
+    {
+      "name": "Science",
+      "clues": [
+        {
+          "value": 100,
+          "question": "What is the chemical symbol for gold?",
+          "answer": "Au"
+        },
+        {
+          "value": 200,
+          "question": "How many bones are in the adult human body?",
+          "answer": "206"
+        },
+        {
+          "value": 300,
+          "question": "What is the speed of light?",
+          "answer": "299,792,458 meters per second"
+        },
+        {
+          "value": 400,
+          "question": "What is the process by which plants convert sunlight into energy?",
+          "answer": "Photosynthesis"
+        },
+        {
+          "value": 500,
+          "question": "What is the most abundant gas in Earth's atmosphere?",
+          "answer": "Nitrogen"
+        }
+      ]
+    },
+    {
+      "name": "History",
+      "clues": [
+        {
+          "value": 100,
+          "question": "In what year did Columbus sail to America?",
+          "answer": "1492"
+        },
+        {
+          "value": 200,
+          "question": "Who was the first President of the United States?",
+          "answer": "George Washington"
+        },
+        {
+          "value": 300,
+          "question": "In what year did the Titanic sink?",
+          "answer": "1912"
+        },
+        {
+          "value": 400,
+          "question": "Which empire built Machu Picchu?",
+          "answer": "The Inca Empire"
+        },
+        {
+          "value": 500,
+          "question": "In what year did the Berlin Wall fall?",
+          "answer": "1989"
+        }
+      ]
+    },
+    {
+      "name": "Geography",
+      "clues": [
+        {
+          "value": 100,
+          "question": "What is the capital of France?",
+          "answer": "Paris"
+        },
+        {
+          "value": 200,
+          "question": "Which country is home to the Great Barrier Reef?",
+          "answer": "Australia"
+        },
+        {
+          "value": 300,
+          "question": "What is the longest river in the world?",
+          "answer": "The Nile River"
+        },
+        {
+          "value": 400,
+          "question": "How many continents are there?",
+          "answer": "7"
+        },
+        {
+          "value": 500,
+          "question": "What is the capital of Japan?",
+          "answer": "Tokyo"
+        }
+      ]
+    }
+  ]
+}
