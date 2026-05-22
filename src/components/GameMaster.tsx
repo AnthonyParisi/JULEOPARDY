@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { useAblyGameState } from '../hooks/useAblyGameState'
+import { useGameState } from '../hooks/useGameState'
 import QuestionDisplay from './QuestionDisplay'
 import RowVideoOverlay from './RowVideoOverlay'
 import ScoreboardSidebar from './ScoreboardSidebar'
@@ -9,11 +9,10 @@ import { loadQuestionsFromPublic, fallbackCategoriesFromBundle } from '../data/l
 interface GameMasterProps {
   sessionId: string
   playerId: string
-  mode: 'solo' | 'multi'
   onBackToLobby: () => void
 }
 
-export default function GameMaster({ sessionId, playerId, mode, onBackToLobby }: GameMasterProps) {
+export default function GameMaster({ sessionId, playerId, onBackToLobby }: GameMasterProps) {
   const {
     gameState,
     initializeGame,
@@ -22,7 +21,7 @@ export default function GameMaster({ sessionId, playerId, mode, onBackToLobby }:
     revealAndCloseQuestion,
     continueAfterCelebration,
     continueAfterRowVideo,
-  } = useAblyGameState(sessionId, true, playerId, mode)
+  } = useGameState(sessionId, true, playerId)
   const [initialized, setInitialized] = useState(false)
 
   // Track who just got marked wrong so the scoreboard sidebar can flash red.
@@ -168,7 +167,6 @@ export default function GameMaster({ sessionId, playerId, mode, onBackToLobby }:
         <QuestionDisplay
           question={gameState.currentQuestion}
           onClose={handleRevealAndClose}
-          mode={mode}
           players={gameState.players}
           buzzerPlayer={buzzerPlayerId}
           buzzerPlayerName={buzzerPlayerId ? gameState.players.find((p) => p.id === buzzerPlayerId)?.name : undefined}

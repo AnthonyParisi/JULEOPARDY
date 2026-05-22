@@ -13,8 +13,7 @@ interface QuestionDisplayProps {
   excludedPlayerIds?: string[]
   allPlayersExcluded?: boolean
   onRevealAndClose?: () => void
-  // solo mode props
-  mode?: 'solo' | 'multi'
+  // solo mode: list of players for the per-player ✓/✗ buttons.
   players?: Player[]
   // celebration props
   celebration?: Celebration | null
@@ -31,11 +30,12 @@ export default function QuestionDisplay({
   excludedPlayerIds = [],
   allPlayersExcluded = false,
   onRevealAndClose,
-  mode = 'multi',
   players = [],
   celebration = null,
   onContinueAfterCelebration,
 }: QuestionDisplayProps) {
+  // This build is solo-mode-only.
+  const mode = 'solo' as const
   const [showAnswer, setShowAnswer] = useState(false)
   // angry-flash: re-trigger CSS keyframe whenever an exclusion is added by
   // bumping a key. We compare current length to the previous render's length.
