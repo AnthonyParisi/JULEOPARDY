@@ -3,12 +3,24 @@ import { renderHook, act } from '@testing-library/react'
 import { useGameState } from '../hooks/useGameState'
 import { Category } from '../types'
 
-// Mock localStorage
+// Mock localStorage. setItem fires a StorageEvent on the same window so two
+// useGameState hooks rendered in the same process see each other's writes —
+// browsers normally only fire storage events on OTHER tabs, but the production
+// hook listens on the current window so this faithfully exercises the sync path.
 const localStorageMock = (() => {
   let store: Record<string, string> = {}
   return {
     getItem: vi.fn((key: string) => store[key] ?? null),
-    setItem: vi.fn((key: string, value: string) => { store[key] = value }),
+    setItem: vi.fn((key: string, value: string) => {
+      const oldValue = store[key] ?? null
+      if (oldValue === value) return
+      store[key] = value
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new StorageEvent('storage', { key, oldValue, newValue: value })
+        )
+      }
+    }),
     removeItem: vi.fn((key: string) => { delete store[key] }),
     clear: vi.fn(() => { store = {} }),
     get length() { return Object.keys(store).length },
@@ -16,21 +28,7 @@ const localStorageMock = (() => {
   }
 })()
 
-// Mock window events
-const mockDispatchEvent = vi.fn()
-const mockAddEventListener = vi.fn()
-const mockRemoveEventListener = vi.fn()
-
 Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock })
-Object.defineProperty(globalThis, 'window', {
-  value: {
-    ...globalThis.window,
-    dispatchEvent: mockDispatchEvent,
-    addEventListener: mockAddEventListener,
-    removeEventListener: mockRemoveEventListener,
-  },
-  writable: true,
-})
 
 // Helper to create mock categories
 function createMockCategories(): Category[] {
@@ -120,7 +118,15 @@ describe('useGameState - Game Flow', () => {
     act(() => {
       result.current.markAnswered('gm1', true)
     })
+    // After correct: celebrating -> Continue -> row-video (the $200 row in
+    // the single-category mock board is complete after one answer) ->
+    // Continue -> playing.
+    expect(result.current.gameState.phase).toBe('celebrating')
+    act(() => result.current.continueAfterCelebration())
+    expect(result.current.gameState.phase).toBe('row-video')
+    act(() => result.current.continueAfterRowVideo())
     expect(result.current.gameState.phase).toBe('playing')
+    // The question's status is now 'correct', so selecting it again is a no-op.
     act(() => result.current.selectQuestion(0, 0))
     expect(result.current.gameState.phase).toBe('playing')
   })
@@ -147,8 +153,8 @@ describe('useGameState - Wrong Answer Flow', () => {
 
     act(() => gm.current.initializeGame(createMockCategories()))
     act(() => gm.current.startGame())
-    act(() => gm.current.addPlayer('Alice'))
-    act(() => gm.current.addPlayer('Bob'))
+    // Each player adds themselves from their own device — addPlayer always uses
+    // the calling hook's playerId, so the GM cannot add players on their behalf.
     act(() => p1.current.addPlayer('Alice'))
     act(() => p2.current.addPlayer('Bob'))
 
@@ -157,7 +163,8 @@ describe('useGameState - Wrong Answer Flow', () => {
 
     act(() => p1.current.buzzIn())
     expect(gm.current.gameState.buzzerOrder).toEqual(['p1'])
-    expect(gm.current.gameState.players[0].buzzedIn).toBe(true)
+    const p1Buzzed = gm.current.gameState.players.find((p) => p.id === 'p1')
+    expect(p1Buzzed?.buzzedIn).toBe(true)
 
     act(() => gm.current.markAnswered('p1', false))
 
@@ -165,8 +172,31 @@ describe('useGameState - Wrong Answer Flow', () => {
     const p1After = gm.current.gameState.players.find(p => p.id === 'p1')
     expect(p1After?.buzzedIn).toBe(false)
     expect(gm.current.gameState.phase).toBe('buzz-ready')
-    expect(p1After?.score).toBe(0)
+    // Wrong answer subtracts the question's value (real Jeopardy scoring)
+    expect(p1After?.score).toBe(-200)
     expect(gm.current.gameState.currentQuestion).not.toBeNull()
+  })
+
+  it('wrong answer: subtracts question value even when player already has points', () => {
+    const session = 'wrong-subtract-running-score'
+    const { result: gm } = renderHook(() => useGameState(session, true, 'gm1'))
+    const { result: p1 } = renderHook(() => useGameState(session, false, 'p1'))
+
+    act(() => gm.current.initializeGame(createMockCategories()))
+    act(() => gm.current.startGame())
+    act(() => p1.current.addPlayer('Alice'))
+
+    // Win the first question (+$200)
+    act(() => gm.current.selectQuestion(0, 0))
+    act(() => p1.current.buzzIn())
+    act(() => gm.current.markAnswered('p1', true))
+    expect(gm.current.gameState.players.find(p => p.id === 'p1')?.score).toBe(200)
+
+    // Lose the second question (-$400)
+    act(() => gm.current.selectQuestion(0, 1))
+    act(() => p1.current.buzzIn())
+    act(() => gm.current.markAnswered('p1', false))
+    expect(gm.current.gameState.players.find(p => p.id === 'p1')?.score).toBe(-200)
   })
 
   it('wrong answer from last eligible player: phase goes to answered', () => {
@@ -176,7 +206,7 @@ describe('useGameState - Wrong Answer Flow', () => {
 
     act(() => gm.current.initializeGame(createMockCategories()))
     act(() => gm.current.startGame())
-    act(() => gm.current.addPlayer('Solo'))
+    // Single player so that wrong answer leaves no one eligible.
     act(() => p1.current.addPlayer('Solo'))
     act(() => gm.current.selectQuestion(0, 0))
     act(() => p1.current.buzzIn())
@@ -187,8 +217,12 @@ describe('useGameState - Wrong Answer Flow', () => {
 
     act(() => gm.current.revealAndCloseQuestion())
     expect(gm.current.gameState.currentQuestion).toBeNull()
-    expect(gm.current.gameState.phase).toBe('playing')
     expect(gm.current.gameState.categories[0].questions[0].status).toBe('incorrect')
+    // Closing this question also completed the $200 row in the single-category
+    // mock board, so the row-video overlay takes over until GM continues.
+    expect(gm.current.gameState.phase).toBe('row-video')
+    act(() => gm.current.continueAfterRowVideo())
+    expect(gm.current.gameState.phase).toBe('playing')
   })
 
   it('excluded player cannot buzz in again', () => {
@@ -199,8 +233,6 @@ describe('useGameState - Wrong Answer Flow', () => {
 
     act(() => gm.current.initializeGame(createMockCategories()))
     act(() => gm.current.startGame())
-    act(() => gm.current.addPlayer('Alice'))
-    act(() => gm.current.addPlayer('Bob'))
     act(() => p1.current.addPlayer('Alice'))
     act(() => p2.current.addPlayer('Bob'))
     act(() => gm.current.selectQuestion(0, 0))
@@ -239,9 +271,49 @@ describe('useGameState - Correct Answer Flow', () => {
     const player = gm.current.gameState.players.find(p => p.id === 'p1')
     expect(player?.score).toBe(200)
     expect(gm.current.gameState.categories[0].questions[0].status).toBe('correct')
+    // Question stays open during celebration; clears on Continue.
+    expect(gm.current.gameState.phase).toBe('celebrating')
+    expect(gm.current.gameState.currentQuestion).not.toBeNull()
+    expect(gm.current.gameState.celebration?.playerId).toBe('p1')
+
+    act(() => gm.current.continueAfterCelebration())
     expect(gm.current.gameState.currentQuestion).toBeNull()
+    expect(gm.current.gameState.celebration).toBeNull()
     expect(gm.current.gameState.excludedPlayerIds).toEqual([])
+    // $200 row is now complete in the single-category mock board, so we
+    // detour through the row-video overlay before returning to 'playing'.
+    expect(gm.current.gameState.phase).toBe('row-video')
+    expect(gm.current.gameState.rowVideo?.value).toBe(200)
+    act(() => gm.current.continueAfterRowVideo())
     expect(gm.current.gameState.phase).toBe('playing')
+    expect(gm.current.gameState.rowVideo).toBeNull()
+  })
+
+  it('continueAfterCelebration flips to finished when all questions answered', () => {
+    const session = 'finished-flow'
+    const { result: gm } = renderHook(() => useGameState(session, true, 'gm1'))
+
+    // Use a tiny board: 1 category, 1 question
+    const tinyCategories: Category[] = [
+      {
+        name: 'OnlyOne',
+        questions: [
+          { id: 'OnlyOne-0', category: 'OnlyOne', value: 100, question: 'q?', answer: 'a', status: 'unanswered' },
+        ],
+      },
+    ]
+    act(() => gm.current.initializeGame(tinyCategories))
+    act(() => gm.current.startGame())
+    act(() => gm.current.addPlayer('Alice'))
+    act(() => gm.current.selectQuestion(0, 0))
+    act(() => gm.current.testBuzz('gm1'))
+    act(() => gm.current.markAnswered('gm1', true))
+    expect(gm.current.gameState.phase).toBe('celebrating')
+    act(() => gm.current.continueAfterCelebration())
+    // The single $100 row is complete; row-video first, then finished.
+    expect(gm.current.gameState.phase).toBe('row-video')
+    act(() => gm.current.continueAfterRowVideo())
+    expect(gm.current.gameState.phase).toBe('finished')
   })
 })
 
@@ -285,8 +357,6 @@ describe('useGameState - testBuzz (debug)', () => {
 
     act(() => gm.current.initializeGame(createMockCategories()))
     act(() => gm.current.startGame())
-    act(() => gm.current.addPlayer('Alice'))
-    act(() => gm.current.addPlayer('Bob'))
     act(() => p1.current.addPlayer('Alice'))
     act(() => p2.current.addPlayer('Bob'))
     act(() => gm.current.selectQuestion(0, 0))
@@ -320,6 +390,10 @@ describe('useGameState - revealAndCloseQuestion', () => {
     act(() => gm.current.revealAndCloseQuestion())
     expect(gm.current.gameState.currentQuestion).toBeNull()
     expect(gm.current.gameState.categories[0].questions[0].status).toBe('incorrect')
+    // Single-category mock board: $200 row is complete after this close, so
+    // we detour through the row-video overlay first.
+    expect(gm.current.gameState.phase).toBe('row-video')
+    act(() => gm.current.continueAfterRowVideo())
     expect(gm.current.gameState.phase).toBe('playing')
   })
 

@@ -15,3 +15,178 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* -----------------------------------------------------------------------
+   Animations & keyframes
+   ----------------------------------------------------------------------- */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.8) translateY(-50px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+@keyframes jiggleSoft {
+  0%, 100% { transform: translate3d(0,0,0) rotate(0deg) scale(1); }
+  20% { transform: translate3d(0,0,0) rotate(-2deg) scale(1.02); }
+  40% { transform: translate3d(0,0,0) rotate(2deg) scale(1.04); }
+  60% { transform: translate3d(0,0,0) rotate(-1deg) scale(1.02); }
+  80% { transform: translate3d(0,0,0) rotate(1deg) scale(1.03); }
+}
+
+@keyframes jiggleStrong {
+  0%, 100% { transform: translate3d(0,0,0) scale(1) rotate(0deg); }
+  15% { transform: translate3d(0,0,0) scale(1.15) rotate(-3deg); }
+  30% { transform: translate3d(0,0,0) scale(0.95) rotate(3deg); }
+  45% { transform: translate3d(0,0,0) scale(1.1) rotate(-2deg); }
+  60% { transform: translate3d(0,0,0) scale(0.97) rotate(2deg); }
+  75% { transform: translate3d(0,0,0) scale(1.05) rotate(-1deg); }
+}
+
+@keyframes scorePop {
+  0% { transform: translate3d(0,0,0) scale(1); color: inherit; }
+  30% { transform: translate3d(0,0,0) scale(1.4); color: #facc15; }
+  60% { transform: translate3d(0,0,0) scale(0.95); }
+  100% { transform: translate3d(0,0,0) scale(1); }
+}
+
+@keyframes celebratePop {
+  0% { transform: translate3d(0,0,0) scale(0.6) rotate(-6deg); opacity: 0; }
+  60% { transform: translate3d(0,0,0) scale(1.15) rotate(3deg); opacity: 1; }
+  100% { transform: translate3d(0,0,0) scale(1) rotate(0deg); opacity: 1; }
+}
+
+/* celebrateGlow used to animate box-shadow, which is paint-heavy and causes
+   stutter, especially during concurrent video playback. Animate a cheap
+   transform + opacity-driven glow ring via a ::after pseudo instead. */
+@keyframes celebrateGlow {
+  0%, 100% { transform: translate3d(0,0,0) scale(1); }
+  50% { transform: translate3d(0,0,0) scale(1.015); }
+}
+
+@keyframes glowRingPulse {
+  0%, 100% { opacity: 0.45; transform: scale(1); }
+  50% { opacity: 0.95; transform: scale(1.04); }
+}
+
+@keyframes angryShake {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  10% { transform: translate3d(-10px, 2px, 0) rotate(-0.8deg); }
+  20% { transform: translate3d(10px, -2px, 0) rotate(0.8deg); }
+  30% { transform: translate3d(-8px, 0, 0) rotate(-0.6deg); }
+  40% { transform: translate3d(8px, 1px, 0) rotate(0.6deg); }
+  50% { transform: translate3d(-6px, -1px, 0); }
+  60% { transform: translate3d(6px, 0, 0); }
+  70% { transform: translate3d(-4px, 1px, 0); }
+  80% { transform: translate3d(4px, 0, 0); }
+  90% { transform: translate3d(-2px, 0, 0); }
+}
+
+@keyframes angryFlash {
+  0% { background-color: rgba(220, 38, 38, 0); }
+  20% { background-color: rgba(220, 38, 38, 0.55); }
+  100% { background-color: rgba(220, 38, 38, 0); }
+}
+
+@keyframes confettiFall {
+  0% { transform: translateY(-110vh) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(110vh) rotate(720deg); opacity: 0.9; }
+}
+
+@keyframes weddingBounce {
+  0%, 100% { transform: translateY(0) scale(1); }
+  25% { transform: translateY(-8px) scale(1.04); }
+  50% { transform: translateY(0) scale(0.98); }
+  75% { transform: translateY(-4px) scale(1.02); }
+}
+
+@keyframes heartPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.25); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+/* -----------------------------------------------------------------------
+   Utility classes used across components
+   ----------------------------------------------------------------------- */
+
+.animate-fadeIn { animation: fadeIn 0.4s ease-out; }
+.animate-scaleIn { animation: scaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); will-change: transform, opacity; }
+
+.jiggle-soft {
+  animation: jiggleSoft 2.6s ease-in-out infinite;
+  will-change: transform;
+  transform: translateZ(0);
+}
+.jiggle-hover { transition: transform 0.15s ease-out; }
+.jiggle-hover:hover { animation: jiggleStrong 0.5s ease-in-out; }
+
+.score-pop { animation: scorePop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1); will-change: transform; }
+
+.celebrate-pop { animation: celebratePop 0.75s cubic-bezier(0.34, 1.56, 0.64, 1); will-change: transform, opacity; }
+
+/* Cheap pulsing glow: static drop-shadow + a tiny transform pulse on the
+   card. Avoids animating box-shadow (paint-heavy) and filter:blur (GPU-
+   heavy on large elements), both of which caused stutter during video. */
+.celebrate-glow {
+  position: relative;
+  animation: celebrateGlow 1.8s ease-in-out infinite;
+  will-change: transform;
+  transform: translateZ(0);
+  box-shadow: 0 0 30px 8px rgba(250, 204, 21, 0.65),
+              0 25px 50px -12px rgba(0, 0, 0, 0.35);
+}
+
+.angry-shake { animation: angryShake 0.6s cubic-bezier(.36,.07,.19,.97) both; will-change: transform; }
+.angry-flash { animation: angryFlash 0.55s ease-out forwards; }
+
+.float-soft { animation: float 3s ease-in-out infinite; will-change: transform; transform: translateZ(0); }
+
+/* When a video is playing, freeze every animation and transition on the
+   page so the browser can dedicate the compositor/decoder to smooth
+   playback. `.playing-video` is set on the RowVideoOverlay root; we also
+   mirror it on <body> via an effect so behind-the-overlay UI is quiet too. */
+.playing-video,
+.playing-video *,
+.playing-video *::before,
+.playing-video *::after,
+body.playing-video,
+body.playing-video *,
+body.playing-video *::before,
+body.playing-video *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+/* CSS containment isolates the video overlay's layout/paint work from the
+   rest of the page so background re-renders can't trigger reflows behind a
+   playing <video> element. */
+.playing-video {
+  contain: layout style paint;
+}
+
+/* Force a fresh compositor layer for the <video> element so the decode
+   pipeline doesn't have to share a layer with surrounding chrome. */
+.playing-video video {
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+/* Wedding-themed celebration */
+.wedding-bounce { animation: weddingBounce 1.6s ease-in-out infinite; }
+.heart-pulse { animation: heartPulse 0.9s ease-in-out infinite; }
+.confetti-piece {
+  position: absolute;
+  top: 0;
+  width: 10px;
+  height: 14px;
+  animation: confettiFall linear infinite;
+}

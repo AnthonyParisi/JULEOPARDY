@@ -12,11 +12,22 @@ export default function PlayerJoin({ sessionId, playerId, onGameStart }: PlayerJ
   const [playerName, setPlayerName] = useState('')
   const [joined, setJoined] = useState(false)
 
+  // Auto-advance to the buzzer view once we're joined and the GM has started the
+  // game. This also covers a refreshed player whose playerId is already in the
+  // game state — we treat them as already joined (see effect below).
   useEffect(() => {
-    if (joined && gameState.phase === 'playing') {
+    if (joined && gameState.phase !== 'setup') {
       onGameStart()
     }
   }, [gameState.phase, joined, onGameStart])
+
+  // If this player is already in the synced player list (e.g. after refresh
+  // mid-game), skip the name entry screen entirely.
+  useEffect(() => {
+    if (!joined && gameState.players.some((p) => p.id === playerId) && gameState.phase !== 'setup') {
+      setJoined(true)
+    }
+  }, [joined, gameState.players, gameState.phase, playerId])
 
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault()

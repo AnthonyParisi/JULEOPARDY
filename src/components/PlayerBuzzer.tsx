@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAblyGameState } from '../hooks/useAblyGameState'
-import QuestionDisplay from './QuestionDisplay'
+import RowVideoOverlay from './RowVideoOverlay'
+import WinnerCelebration from './WinnerCelebration'
 
 interface PlayerBuzzerProps {
   sessionId: string
@@ -12,38 +13,48 @@ export default function PlayerBuzzer({ sessionId, playerId }: PlayerBuzzerProps)
   const [localBuzzed, setLocalBuzzed] = useState(false)
   const currentPlayer = gameState.players.find((p) => p.id === playerId)
   const isExcluded = gameState.excludedPlayerIds.includes(playerId)
+  const isCelebrating = gameState.phase === 'celebrating' && gameState.celebration
+  const isFinished = gameState.phase === 'finished'
 
-  // Reset local buzzed state when a new question is selected or exclusion list changes
   useEffect(() => {
     setLocalBuzzed(false)
   }, [gameState.currentQuestion?.id])
 
-  // Also reset when excluded (wrong answer resets buzzer state)
   useEffect(() => {
-    if (isExcluded) {
-      setLocalBuzzed(false)
-    }
+    if (isExcluded) setLocalBuzzed(false)
   }, [isExcluded])
 
-  // Handle spacebar buzz
   useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && !localBuzzed && gameState.phase === 'buzz-ready' && !isExcluded) {
-        e.preventDefault()
-        handleBuzz()
-      }
-    }
+    if (gameState.phase !== 'buzz-ready') setLocalBuzzed(false)
+  }, [gameState.phase])
 
-    window.addEventListener('keydown', handleKeyPress)
-    return () => window.removeEventListener('keydown', handleKeyPress)
-  }, [localBuzzed, gameState.phase, isExcluded])
+  // Keep the latest values in a ref so the keydown listener doesn't need to
+  // be re-attached on every render — that re-attach was firing whenever any
+  // other player's score changed.
+  const buzzStateRef = useRef({ localBuzzed, phase: gameState.phase, isExcluded })
+  buzzStateRef.current = { localBuzzed, phase: gameState.phase, isExcluded }
 
   const handleBuzz = () => {
-    if (!localBuzzed && gameState.phase === 'buzz-ready' && !isExcluded) {
+    const { localBuzzed: lb, phase, isExcluded: ex } = buzzStateRef.current
+    if (!lb && phase === 'buzz-ready' && !ex) {
       setLocalBuzzed(true)
       buzzIn()
     }
   }
+
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.code !== 'Space') return
+      const { localBuzzed: lb, phase, isExcluded: ex } = buzzStateRef.current
+      if (lb || phase !== 'buzz-ready' || ex) return
+      e.preventDefault()
+      handleBuzz()
+    }
+    window.addEventListener('keydown', handleKeyPress)
+    return () => window.removeEventListener('keydown', handleKeyPress)
+    // Intentionally empty deps: handler reads from the ref, never stale.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   if (!currentPlayer) {
     return (
@@ -57,32 +68,17 @@ export default function PlayerBuzzer({ sessionId, playerId }: PlayerBuzzerProps)
     <div className="min-h-screen bg-gradient-to-b from-pink-200 via-white to-red-100 p-3 flex flex-col">
       {/* Header - Player Name & Score */}
       <div className="text-center mb-2">
-        <p className="text-2xl font-black text-red-600">{currentPlayer.name}</p>
+        <p className="text-2xl font-black text-red-600 jiggle-soft">{currentPlayer.name}</p>
         <p className="text-3xl font-black text-pink-600">${currentPlayer.score}</p>
-      </div>
-
-      {/* Scoreboard - Compact */}
-      <div className="bg-white rounded-lg shadow-lg p-2 border-3 border-pink-300 mb-2">
-        <div className="grid grid-cols-3 md:grid-cols-4 gap-1">
-          {gameState.players.map((player) => (
-            <div
-              key={player.id}
-              className={`p-2 rounded text-center text-xs font-bold transition ${
-                player.id === playerId
-                  ? 'bg-gradient-to-br from-red-400 to-pink-400 text-white border-2 border-white shadow'
-                  : 'bg-gradient-to-br from-pink-100 to-red-100 text-red-600 border border-pink-300'
-              }`}
-            >
-              <p className="truncate">{player.name}</p>
-              <p className="text-lg font-black">${player.score}</p>
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* Question Display - if showing */}
       {gameState.currentQuestion && (
-        <div className="bg-gradient-to-br from-red-400 to-pink-500 rounded-lg p-3 mb-2 border-3 border-white shadow-lg">
+        <div
+          className={`bg-gradient-to-br from-red-400 to-pink-500 rounded-lg p-3 mb-2 border-3 border-white shadow-lg ${
+            isCelebrating ? 'celebrate-glow' : ''
+          }`}
+        >
           <p className="text-white text-xs font-black text-center drop-shadow mb-1">
             {gameState.currentQuestion.category}
           </p>
@@ -92,6 +88,16 @@ export default function PlayerBuzzer({ sessionId, playerId }: PlayerBuzzerProps)
           <p className="text-white text-sm text-center drop-shadow mt-1">
             {gameState.currentQuestion.question}
           </p>
+          {isCelebrating && (
+            <div className="mt-2 bg-white/95 rounded p-2">
+              <p className="text-yellow-500 text-center text-sm font-black celebrate-pop">
+                🎉 CORRECT! 🎉
+              </p>
+              <p className="text-red-600 text-center text-base font-black mt-1">
+                {gameState.currentQuestion.answer}
+              </p>
+            </div>
+          )}
         </div>
       )}
 
@@ -109,7 +115,7 @@ export default function PlayerBuzzer({ sessionId, playerId }: PlayerBuzzerProps)
               ? 'bg-gray-400 text-gray-600 cursor-default'
               : localBuzzed || currentPlayer.buzzedIn
                 ? 'bg-red-600 text-white cursor-default'
-                : 'bg-gradient-to-br from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white cursor-pointer hover:scale-110'
+                : 'bg-gradient-to-br from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white cursor-pointer hover:scale-110 jiggle-hover'
           }`}
         >
           {gameState.phase === 'buzz-ready'
@@ -133,7 +139,7 @@ export default function PlayerBuzzer({ sessionId, playerId }: PlayerBuzzerProps)
         {localBuzzed && (
           <p className="text-green-600 font-black">✓ You buzzed in!</p>
         )}
-        {gameState.buzzerOrder.length > 0 && gameState.phase === 'buzz-ready' && !localBuzzed && (
+        {gameState.buzzerOrder.length > 0 && gameState.phase === 'answered' && gameState.buzzerOrder[0] !== playerId && (
           <p className="text-purple-600 font-bold">
             {gameState.players.find((p) => p.id === gameState.buzzerOrder[0])?.name} is answering
           </p>
@@ -143,13 +149,13 @@ export default function PlayerBuzzer({ sessionId, playerId }: PlayerBuzzerProps)
         )}
       </div>
 
-      {/* Question Display Modal */}
-      {gameState.currentQuestion && (
-        <QuestionDisplay
-          question={gameState.currentQuestion}
-          onClose={() => {}}
-        />
+      {/* Row video — players see the overlay but not the video itself */}
+      {gameState.rowVideo && (
+        <RowVideoOverlay rowVideo={gameState.rowVideo} playVideo={false} />
       )}
+
+      {/* End-of-game winner celebration (players see it too, no back button) */}
+      {isFinished && <WinnerCelebration players={gameState.players} />}
     </div>
   )
 }

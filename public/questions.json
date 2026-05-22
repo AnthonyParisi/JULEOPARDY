@@ -1,92 +1,152 @@
 {
   "categories": [
     {
-      "name": "Science",
+      "name": "The Bride",
       "clues": [
         {
           "value": 100,
-          "question": "What is the chemical symbol for gold?",
-          "answer": "Au"
+          "question": "Least favorite food?",
+          "answer": "Chicken"
         },
         {
           "value": 200,
-          "question": "How many bones are in the adult human body?",
-          "answer": "206"
+          "question": "Favorite dessert?",
+          "answer": "Cheesecake"
         },
         {
           "value": 300,
-          "question": "What is the speed of light?",
-          "answer": "299,792,458 meters per second"
+          "question": "What item does she always pack for traveling?",
+          "answer": "Lint roller"
         },
         {
           "value": 400,
-          "question": "What is the process by which plants convert sunlight into energy?",
-          "answer": "Photosynthesis"
+          "question": "Favorite movie?",
+          "answer": "Goodfellas"
         },
         {
           "value": 500,
-          "question": "What is the most abundant gas in Earth's atmosphere?",
-          "answer": "Nitrogen"
+          "question": "What did she want to be when she grew up?",
+          "answer": "Architect or bus driver"
         }
       ]
     },
     {
-      "name": "History",
+      "name": "Love Story",
       "clues": [
         {
           "value": 100,
-          "question": "In what year did Columbus sail to America?",
-          "answer": "1492"
+          "question": "Where did the proposal happen?",
+          "answer": "Wedgewood Houston"
         },
         {
           "value": 200,
-          "question": "Who was the first President of the United States?",
-          "answer": "George Washington"
+          "question": "What and where was their first date?",
+          "answer": "Haunted ghost tour / Knoxville"
         },
         {
           "value": 300,
-          "question": "In what year did the Titanic sink?",
-          "answer": "1912"
+          "question": "Who said 'I love you' first?",
+          "answer": "Andrew"
         },
         {
           "value": 400,
-          "question": "Which empire built Machu Picchu?",
-          "answer": "The Inca Empire"
+          "question": "Where did they take their first trip together?",
+          "answer": "Knoxville (coincidentally their first date!)"
         },
         {
           "value": 500,
-          "question": "In what year did the Berlin Wall fall?",
-          "answer": "1989"
+          "question": "How many countries have the couple traveled to together?",
+          "answer": "6"
         }
       ]
     },
     {
-      "name": "Geography",
+      "name": "Wedding Buzz",
       "clues": [
         {
           "value": 100,
-          "question": "What is the capital of France?",
-          "answer": "Paris"
+          "question": "What is the wedding date?",
+          "answer": "8/29/26"
         },
         {
           "value": 200,
-          "question": "Which country is home to the Great Barrier Reef?",
-          "answer": "Australia"
+          "question": "Where is the wedding location?",
+          "answer": "Quebec City, Canada"
         },
         {
           "value": 300,
-          "question": "What is the longest river in the world?",
-          "answer": "The Nile River"
+          "question": "What type of venue?",
+          "answer": "Castle"
         },
         {
           "value": 400,
-          "question": "How many continents are there?",
-          "answer": "7"
+          "question": "What time will the ceremony begin?",
+          "answer": "4pm"
         },
         {
           "value": 500,
-          "question": "What is the capital of Japan?",
-          "answer": "Tokyo"
+          "question": "How many days until the wedding? (as of 5/24)",
+          "answer": "97"
+        }
+      ]
+    },
+    {
+      "name": "The Groom",
+      "clues": [
+        {
+          "value": 100,
+          "question": "Hometown?",
+          "answer": "Baltimore"
+        },
+        {
+          "value": 200,
+          "question": "Favorite type of music?",
+          "answer": "90’s/00s hip hop"
+        },
+        {
+          "value": 300,
+          "question": "Favorite fast food?",
+          "answer": "Dominos"
+        },
+        {
+          "value": 400,
+          "question": "Favorite dessert?",
+          "answer": "Cookie cake"
+        },
+        {
+          "value": 500,
+          "question": "Go-to cocktail?",
+          "answer": "Old fashioned"
+        }
+      ]
+    },
+    {
+      "name": "The In-Laws",
+      "clues": [
+        {
+          "value": 100,
+          "question": "What’s Andrew’s sister’s name?",
+          "answer": "Nikki"
+        },
+        {
+          "value": 200,
+          "question": "Which family knew about 'them' first?",
+          "answer": "Not specified"
+        },
+        {
+          "value": 300,
+          "question": "Which family member was with Juliana when she met Andrew?",
+          "answer": "Kaeli"
+        },
+        {
+          "value": 400,
+          "question": "Spell Julianna’s new last name.",
+          "answer": "Finkelstein"
+        },
+        {
+          "value": 500,
+          "question": "Which members of Andrew’s family are big fans of Julianna?",
+          "answer": "Cameron and Connor"
         }
       ]
     }

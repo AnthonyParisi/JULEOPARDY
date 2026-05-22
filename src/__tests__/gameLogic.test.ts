@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { GameState, Category, Question } from '../types'
+import { GameState, Category } from '../types'
 
 // Pure function helpers that replicate the game logic from useGameState
 // These test the actual state transformations without React effects
 
-function createInitialState(sessionId: string, isGameMaster: boolean, playerId: string): GameState {
+function createInitialState(sessionId: string, isGameMaster: boolean, _playerId: string): GameState {
   return {
     sessionId,
     phase: 'setup',
@@ -14,6 +14,8 @@ function createInitialState(sessionId: string, isGameMaster: boolean, playerId: 
     lastCorrectPlayerId: null,
     buzzerOrder: [],
     excludedPlayerIds: [],
+    celebration: null,
+    rowVideo: null,
     isGameMaster,
     updatedAt: Date.now(),
   }
@@ -85,6 +87,26 @@ function buzzIn(state: GameState, playerId: string): GameState {
     players: state.players.map((p) => (p.id === playerId ? { ...p, buzzedIn: true } : p)),
     buzzerOrder: [...state.buzzerOrder, playerId],
     phase: isFirstToBuzz ? 'answered' : state.phase,
+  }
+}
+
+// GM-authoritative buzz acceptance — mirrors the new acceptBuzz in useGameState.
+// Players publish buzz-requests through Ably; the GM client runs this logic
+// against its local state, and Ably's FIFO delivery to that one client is what
+// breaks ties.
+function acceptBuzz(state: GameState, buzzerPlayerId: string): GameState {
+  if (!state.isGameMaster) return state
+  if (state.phase !== 'buzz-ready') return state
+  if (state.buzzerOrder.length > 0) return state
+  if (state.excludedPlayerIds.includes(buzzerPlayerId)) return state
+  const player = state.players.find((p) => p.id === buzzerPlayerId)
+  if (!player) return state
+
+  return {
+    ...state,
+    players: state.players.map((p) => (p.id === buzzerPlayerId ? { ...p, buzzedIn: true } : p)),
+    buzzerOrder: [buzzerPlayerId],
+    phase: 'answered',
   }
 }
 
@@ -314,6 +336,78 @@ describe('Game Logic - Full Scenario: Two players, wrong then correct', () => {
     expect(s.categories[0].questions[0].status).toBe('correct')
     expect(s.excludedPlayerIds).toEqual([])
     expect(s.phase).toBe('playing')
+  })
+})
+
+describe('Game Logic - acceptBuzz (GM-authoritative buzz)', () => {
+  it('accepts the first buzz-request and ignores subsequent ones on same question', () => {
+    let s = initializeGame(createInitialState('s1', true, 'gm1'), createMockCategories())
+    s = startGame(s)
+    s = addPlayer(s, 'p1', 'Alice')
+    s = addPlayer(s, 'p2', 'Bob')
+    s = selectQuestion(s, 0, 0)
+
+    // Simulate two buzz-requests arriving at the GM in order. The first one
+    // wins; the second is dropped because buzzerOrder is non-empty.
+    s = acceptBuzz(s, 'p1')
+    expect(s.buzzerOrder).toEqual(['p1'])
+    expect(s.phase).toBe('answered')
+
+    s = acceptBuzz(s, 'p2')
+    expect(s.buzzerOrder).toEqual(['p1'])
+  })
+
+  it('rejects buzz-requests outside buzz-ready phase', () => {
+    let s = initializeGame(createInitialState('s1', true, 'gm1'), createMockCategories())
+    s = startGame(s)
+    s = addPlayer(s, 'p1', 'Alice')
+    // No question selected yet — phase is 'playing'
+    s = acceptBuzz(s, 'p1')
+    expect(s.buzzerOrder).toEqual([])
+    expect(s.phase).toBe('playing')
+  })
+
+  it('rejects buzz-requests from excluded players', () => {
+    let s = initializeGame(createInitialState('s1', true, 'gm1'), createMockCategories())
+    s = startGame(s)
+    s = addPlayer(s, 'p1', 'Alice')
+    s = addPlayer(s, 'p2', 'Bob')
+    s = selectQuestion(s, 0, 0)
+
+    s = acceptBuzz(s, 'p1')
+    s = markAnswered(s, 'p1', false)
+    expect(s.phase).toBe('buzz-ready')
+    expect(s.excludedPlayerIds).toEqual(['p1'])
+
+    // p1 retries — should be ignored even though buzzerOrder is empty again
+    s = acceptBuzz(s, 'p1')
+    expect(s.buzzerOrder).toEqual([])
+
+    // p2 buzzes — accepted
+    s = acceptBuzz(s, 'p2')
+    expect(s.buzzerOrder).toEqual(['p2'])
+  })
+
+  it('rejects buzz-requests for unknown players', () => {
+    let s = initializeGame(createInitialState('s1', true, 'gm1'), createMockCategories())
+    s = startGame(s)
+    s = addPlayer(s, 'p1', 'Alice')
+    s = selectQuestion(s, 0, 0)
+    s = acceptBuzz(s, 'ghost')
+    expect(s.buzzerOrder).toEqual([])
+  })
+
+  it('non-GM cannot acceptBuzz', () => {
+    let s = initializeGame(createInitialState('s1', false, 'p1'), createMockCategories())
+    // simulate the GM having set up the game; mutate isGameMaster to true to set
+    // up state, then back to false to test the guard
+    s = { ...s, isGameMaster: true }
+    s = startGame(s)
+    s = addPlayer(s, 'p1', 'Alice')
+    s = selectQuestion(s, 0, 0)
+    s = { ...s, isGameMaster: false }
+    s = acceptBuzz(s, 'p1')
+    expect(s.buzzerOrder).toEqual([])
   })
 })
 
