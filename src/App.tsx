@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react'
-import { BrowserRouter, Routes, Route, useSearchParams } from 'react-router-dom'
 import { nanoid } from 'nanoid'
 import Lobby from './components/Lobby'
 import GameMaster from './components/GameMaster'
@@ -7,8 +6,14 @@ import PlayerJoin from './components/PlayerJoin'
 import PlayerBuzzer from './components/PlayerBuzzer'
 import ModePicker from './components/ModePicker'
 
-function AppContent() {
-  const [searchParams] = useSearchParams()
+// We don't use react-router for navigation — only to read URL query params.
+// Using BrowserRouter here was fine when the site was hosted at /, but on
+// GitHub Pages it lives at /<repo-name>/ and the default `<Route path="/">`
+// no longer matches, producing a blank screen. Reading query params directly
+// from window.location.search avoids any path-matching concerns and works
+// under any deployment base path.
+
+export default function App() {
   const [sessionId, setSessionId] = useState<string>('')
   const [playerId, setPlayerId] = useState<string>('')
   const [isGameMaster, setIsGameMaster] = useState(false)
@@ -25,6 +30,7 @@ function AppContent() {
     if (resolvedRef.current) return
     resolvedRef.current = true
 
+    const searchParams = new URLSearchParams(window.location.search)
     const paramSessionId = searchParams.get('session')
     const paramPlayerId = searchParams.get('player')
     const isMaster = searchParams.get('master') === 'true'
@@ -41,14 +47,16 @@ function AppContent() {
       if (!paramPlayerId) {
         const next = new URLSearchParams(searchParams)
         next.set('player', pid)
-        window.history.replaceState(null, '', `?${next.toString()}`)
+        // Preserve the current pathname (GH Pages may host us at /<repo>/);
+        // only swap the query string.
+        window.history.replaceState(null, '', `${window.location.pathname}?${next.toString()}`)
       }
     } else {
       // No session in URL — show the mode picker. Session is generated only
       // after the user picks a mode (handlePick below).
       setNeedsPicker(true)
     }
-  }, [searchParams])
+  }, [])
 
   const handlePick = (pickedMode: 'solo' | 'multi') => {
     const newSessionId = nanoid(6)
@@ -64,7 +72,7 @@ function AppContent() {
       master: 'true',
     })
     if (pickedMode === 'solo') params.set('mode', 'solo')
-    window.history.replaceState(null, '', `?${params.toString()}`)
+    window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`)
   }
 
   if (needsPicker) {
@@ -74,42 +82,27 @@ function AppContent() {
     return <div className="flex items-center justify-center min-h-screen bg-pink-200">Loading...</div>
   }
 
-  return (
-    <Routes>
-      <Route
-        path="/"
-        element={
-          isGameMaster ? (
-            gameStarted ? (
-              <GameMaster
-                sessionId={sessionId}
-                playerId={playerId}
-                mode={mode}
-                onBackToLobby={() => setGameStarted(false)}
-              />
-            ) : (
-              <Lobby
-                sessionId={sessionId}
-                playerId={playerId}
-                mode={mode}
-                onGameStart={() => setGameStarted(true)}
-              />
-            )
-          ) : gameStarted ? (
-            <PlayerBuzzer sessionId={sessionId} playerId={playerId} />
-          ) : (
-            <PlayerJoin sessionId={sessionId} playerId={playerId} onGameStart={() => setGameStarted(true)} />
-          )
-        }
+  if (isGameMaster) {
+    return gameStarted ? (
+      <GameMaster
+        sessionId={sessionId}
+        playerId={playerId}
+        mode={mode}
+        onBackToLobby={() => setGameStarted(false)}
       />
-    </Routes>
-  )
-}
+    ) : (
+      <Lobby
+        sessionId={sessionId}
+        playerId={playerId}
+        mode={mode}
+        onGameStart={() => setGameStarted(true)}
+      />
+    )
+  }
 
-export default function App() {
-  return (
-    <BrowserRouter>
-      <AppContent />
-    </BrowserRouter>
+  return gameStarted ? (
+    <PlayerBuzzer sessionId={sessionId} playerId={playerId} />
+  ) : (
+    <PlayerJoin sessionId={sessionId} playerId={playerId} onGameStart={() => setGameStarted(true)} />
   )
 }
