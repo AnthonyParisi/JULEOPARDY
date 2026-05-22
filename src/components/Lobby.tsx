@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import QRCode from 'qrcode.react'
+import { QRCodeSVG } from 'qrcode.react'
 import { nanoid } from 'nanoid'
 import { useAblyGameState } from '../hooks/useAblyGameState'
 import { loadQuestionsFromPublic } from '../data/loadQuestions'
@@ -184,7 +184,7 @@ export default function Lobby({ sessionId, playerId, mode, onGameStart }: LobbyP
             {/* QR Code */}
             <div className="flex justify-center">
               <div className="bg-white rounded-lg shadow-lg p-4 border-3 border-pink-400 w-fit max-w-full">
-                <QRCode value={joinUrl} size={200} level="H" />
+                <QRCodeSVG value={joinUrl} size={200} level="H" />
                 <p className="text-center text-red-600 font-bold mt-3 text-sm">
                   Scan to Join!
                 </p>
